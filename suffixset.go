@@ -189,16 +189,16 @@ func (s *SuffixSet) FindKMatches(pattern string, k int) []int {
 	// Find k distinct word matches for the pattern.
 	matches := make([]int, 0, k)
 	if s.prev != nil {
-		return recursiveFindKMatches(l, l, r, k, s.wordIndex, matches, s.prev, s.prevRMQ)
+		return recursiveFindKMatches(l, l, r, k, s.wordIndex, matches, s.suffixArray, s.prev, s.prevRMQ)
 	}
 
 	usedWord := make(map[int]bool)
 	for i := l; i <= r && len(matches) < k; i++ {
-		if usedWord[s.wordIndex[i]] {
+		if usedWord[s.wordIndex[s.suffixArray[i]]] {
 			continue
 		}
-		usedWord[s.wordIndex[i]] = true
-		matches = append(matches, s.wordIndex[i])
+		usedWord[s.wordIndex[s.suffixArray[i]]] = true
+		matches = append(matches, s.wordIndex[s.suffixArray[i]])
 	}
 	return matches
 }
@@ -216,17 +216,17 @@ func findBoundaries(pattern []byte, str []byte, suffixArray, lcp []int, lcpRMQ *
 	bestIdx, best, n := -1, -1, len(suffixArray)
 
 	expandBest := func(i int) bool {
-		for best < len(pattern) && i+best < n && pattern[best] == str[i+best] {
+		for best < len(pattern) && suffixArray[i]+best < n && pattern[best] == str[suffixArray[i]+best] {
 			best++
 		}
 		if best == len(pattern) {
 			// p < str[i:]
 			return true
-		} else if i+best == n {
+		} else if suffixArray[i]+best == n {
 			// p > str[i:]
 			return false
 		} else {
-			return pattern[best] < str[i+best]
+			return pattern[best] < str[suffixArray[i]+best]
 		}
 	}
 
@@ -244,16 +244,17 @@ func findBoundaries(pattern []byte, str []byte, suffixArray, lcp []int, lcpRMQ *
 				// if i < bestIdx, then you want to shorten to [i+1, r].
 				return i > bestIdx
 			} else {
+				bestIdx = i
 				return expandBest(i)
 			}
 		}
 
 		// naive compare as we dont have lcp, find first l where p <= s[l:]
-		return bytes.Compare(pattern, str[i:]) <= 0
+		return bytes.Compare(pattern, str[suffixArray[i]:]) <= 0
 	})
 
 	// Check if L has pattern as a prefix, otherwise we have no matches
-	if l == n || (lcp != nil && best < len(pattern)) || (lcp == nil && !bytes.HasPrefix(str[l:], pattern)) {
+	if l == n || (lcp != nil && best < len(pattern)) || (lcp == nil && !bytes.HasPrefix(str[suffixArray[l]:], pattern)) {
 		return -1, -1
 	}
 
@@ -269,13 +270,13 @@ func findBoundaries(pattern []byte, str []byte, suffixArray, lcp []int, lcpRMQ *
 			return !(lcp >= len(pattern))
 		}
 		// Naive check if we don't have LCP, still apply the negation to find the first T (first F)
-		return !bytes.HasPrefix(str[l+i:], pattern)
+		return !bytes.HasPrefix(str[suffixArray[l+i]:], pattern)
 	})
 
 	return l, l + r - 1
 }
 
-func recursiveFindKMatches(baseL, l, r, k int, wordIndex, matches, prev []int, rmq *rmq.RMQHybridNaive[int]) []int {
+func recursiveFindKMatches(baseL, l, r, k int, wordIndex, matches, suffixArray, prev []int, rmq *rmq.RMQHybridNaive[int]) []int {
 	if k <= len(matches) || l > r {
 		return matches
 	}
@@ -287,7 +288,7 @@ func recursiveFindKMatches(baseL, l, r, k int, wordIndex, matches, prev []int, r
 	if prev[p] >= baseL {
 		return matches
 	}
-	matches = append(matches, wordIndex[p])
-	matches = recursiveFindKMatches(baseL, l, p-1, k, wordIndex, matches, prev, rmq)
-	return recursiveFindKMatches(baseL, p+1, r, k, wordIndex, matches, prev, rmq)
+	matches = append(matches, wordIndex[suffixArray[p]])
+	matches = recursiveFindKMatches(baseL, l, p-1, k, wordIndex, matches, suffixArray, prev, rmq)
+	return recursiveFindKMatches(baseL, p+1, r, k, wordIndex, matches, suffixArray, prev, rmq)
 }
