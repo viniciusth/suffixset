@@ -1,5 +1,5 @@
-github.com/viniciusth/rmq v0.1.0 h1:/qnm4EdGs+ukEYXEy6vuNvWiUC9xXFl+U9Xx5rGGTVw=
-github.com/viniciusth/rmq v0.1.0/go.mod h1:A+k/1M7+0JPTRhOfOqSK/QT97nXoy9hrlEScnmvh3do=
+github.com/viniciusth/rmq v0.2.0 h1:3ikNGpNO7pSND1HPlyX9dfyzSq5NdUDOXCASKoQ7X2I=
+github.com/viniciusth/rmq v0.2.0/go.mod h1:A+k/1M7+0JPTRhOfOqSK/QT97nXoy9hrlEScnmvh3do=
 golang.org/x/exp v0.0.0-20250718183923-645b1fa84792 h1:R9PFI6EUdfVKgwKjZef7QIwGcBKu86OEFpJ9nUEP2l4=
 golang.org/x/exp v0.0.0-20250718183923-645b1fa84792/go.mod h1:A+z0yzpGtvnG90cToK5n2tu8UJVP2XUATh+r+sfOOOc=
 golang.org/x/text v0.27.0 h1:4fGWRpyh641NLlecmyl4LOe6yDdfaYNrGb2zdfo4JV4=

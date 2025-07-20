@@ -137,12 +137,14 @@ func TestFindKMatchesOptions(t *testing.T) {
 }
 
 func FuzzFindKMatches(f *testing.F) {
-	f.Add([]byte("apple\xffbanana\xffapp\xffpineapple\xffbandana"), []byte("app"), uint(3))
-	f.Add([]byte("hello\xffworld\xffhell\xffloworld\xff😂🙈🙉🙊"), []byte("😂"), uint(2))
+	f.Add([]byte("apple\xffbanana\xffapp\xffpineapple\xffbandana"), []byte("app"), uint(3), uint(0))
+	f.Add([]byte("hello\xffworld\xffhell\xffloworld\xff😂🙈🙉🙊"), []byte("😂"), uint(2), uint(15))
+	f.Add([]byte("Café\xffcafe\xffCAFE\xffélite\xffelite"), []byte("cafe"), uint(3), uint(0))
+	f.Add([]byte("Café\xffcafe\xffCAFE\xffélite\xffelite"), []byte("cafe"), uint(3), uint(12))
 
-	f.Fuzz(func(t *testing.T, data []byte, pat []byte, kk uint) {
-		if !utf8.Valid(pat) {
-			return
+	f.Fuzz(func(t *testing.T, data []byte, pat []byte, kk uint, options uint) {
+		if options > 32 || !utf8.Valid(pat) {
+			t.Skip()
 		}
 		wordsBytes := bytes.Split(data, []byte{wordSeparator})
 		words := make([]string, 0, len(wordsBytes))
@@ -155,14 +157,35 @@ func FuzzFindKMatches(f *testing.F) {
 			totalLen += len(wb)
 		}
 		if len(words) == 0 || len(words) > 50 || totalLen > 1000 || len(pat) > 100 {
-			return
+			t.Skip()
 		}
 		k := int(kk)
 
+		skipLCP := options&1 != 0
+		skipDocListing := options&2 != 0
+		caseSensitive := options&4 != 0
+		skipNormalization := options&8 != 0
+		rmqHybridLog := options&16 != 0
+
 		builder := NewBuilder(words)
+		if skipLCP {
+			builder.SkipLCP()
+		}
+		if skipDocListing {
+			builder.SkipDocListing()
+		}
+		if caseSensitive {
+			builder.CaseSensitive()
+		}
+		if skipNormalization {
+			builder.SkipNormalization()
+		}
+		if rmqHybridLog {
+			builder.UseHybridLogRMQ()
+		}
 		ss, err := builder.Build()
 		if err != nil {
-			return
+			t.Skip()
 		}
 
 		got := ss.FindKMatches(string(pat), k)

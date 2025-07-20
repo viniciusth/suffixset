@@ -27,6 +27,7 @@ type SuffixSetBuilder struct {
 	useDocListing bool
 	caseSensitive bool
 	normalize     bool
+	rmqHybridLog  bool
 }
 
 func NewBuilder(words []string) *SuffixSetBuilder {
@@ -36,6 +37,7 @@ func NewBuilder(words []string) *SuffixSetBuilder {
 		useDocListing: true,
 		caseSensitive: false,
 		normalize:     true,
+		rmqHybridLog:  false,
 	}
 }
 
@@ -70,6 +72,13 @@ func (b *SuffixSetBuilder) SkipNormalization() *SuffixSetBuilder {
 	return b
 }
 
+// Uses the hybrid log-linear RMQ algorithm instead of the naive algorithm.
+// Trade-off: the hybrid log-linear RMQ algorithm is faster, but uses more memory.
+func (b *SuffixSetBuilder) UseHybridLogRMQ() *SuffixSetBuilder {
+	b.rmqHybridLog = true
+	return b
+}
+
 func (b *SuffixSetBuilder) Build() (*SuffixSet, error) {
 	for _, word := range b.words {
 		if !utf8.Valid([]byte(word)) {
@@ -84,18 +93,26 @@ func (b *SuffixSetBuilder) Build() (*SuffixSet, error) {
 	}
 
 	var lcp []int
-	var lcpRMQ *rmq.RMQHybridNaive[int]
+	var lcpRMQ interface{ Query(int, int) int }
 	if b.useLCP {
 		lcp = BuildLCPArray(suffixArray, concatenatedWords)
-		lcpRMQ = rmq.NewRMQHybridNaive(lcp)
+		if b.rmqHybridLog {
+			lcpRMQ = rmq.NewRMQHybrid(lcp, rmq.Min)
+		} else {
+			lcpRMQ = rmq.NewRMQHybridNaive(lcp, rmq.Min)
+		}
 	}
 
 	wordIndex := buildWordIndexArray(suffixArray, concatenatedWords)
 	var prev []int
-	var prevRMQ *rmq.RMQHybridNaive[int]
+	var prevRMQ interface{ Query(int, int) int }
 	if b.useDocListing {
 		prev = buildPrevArray(suffixArray, wordIndex, b.words)
-		prevRMQ = rmq.NewRMQHybridNaive(prev)
+		if b.rmqHybridLog {
+			prevRMQ = rmq.NewRMQHybrid(prev, rmq.Min)
+		} else {
+			prevRMQ = rmq.NewRMQHybridNaive(prev, rmq.Min)
+		}
 	}
 	return &SuffixSet{
 		suffixArray:       suffixArray,
@@ -117,9 +134,9 @@ type SuffixSet struct {
 	wordIndex         []int
 	concatenatedWords []byte
 	lcp               []int
-	lcpRMQ            *rmq.RMQHybridNaive[int]
+	lcpRMQ            interface{ Query(int, int) int }
 	prev              []int
-	prevRMQ           *rmq.RMQHybridNaive[int]
+	prevRMQ           interface{ Query(int, int) int }
 	normalize         bool
 	caseSensitive     bool
 }
@@ -212,7 +229,7 @@ func (s *SuffixSet) FindKMatchesString(pattern string, k int) []string {
 	return matches
 }
 
-func findBoundaries(pattern []byte, str []byte, suffixArray, lcp []int, lcpRMQ *rmq.RMQHybridNaive[int]) (int, int) {
+func findBoundaries(pattern []byte, str []byte, suffixArray, lcp []int, lcpRMQ interface{ Query(int, int) int }) (int, int) {
 	bestIdx, best, n := -1, -1, len(suffixArray)
 
 	expandBest := func(i int) bool {
@@ -276,7 +293,7 @@ func findBoundaries(pattern []byte, str []byte, suffixArray, lcp []int, lcpRMQ *
 	return l, l + r - 1
 }
 
-func recursiveFindKMatches(baseL, l, r, k int, wordIndex, matches, suffixArray, prev []int, rmq *rmq.RMQHybridNaive[int]) []int {
+func recursiveFindKMatches(baseL, l, r, k int, wordIndex, matches, suffixArray, prev []int, rmq interface{ Query(int, int) int }) []int {
 	if k <= len(matches) || l > r {
 		return matches
 	}

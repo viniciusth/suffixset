@@ -7,4 +7,4 @@ require (
 	golang.org/x/text v0.27.0
 )
 
-require github.com/viniciusth/rmq v0.1.0
+require github.com/viniciusth/rmq v0.2.0
