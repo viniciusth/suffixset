@@ -1,20 +1,33 @@
+package suffixset
+
+import (
+	"errors"
+	"strconv"
+	"unsafe"
+)
+
+var (
+	ErrUnsupportedIntSize = errors.New("suffixarray: unsupported int size")
+)
+
+func BuildSuffixArray(text []byte) ([]int, error) {
+	switch strconv.IntSize {
+	case 32:
+		sa32 := make([]int32, len(text))
+		text_32(text, sa32)
+		return *(*[]int)(unsafe.Pointer(&sa32)), nil
+	case 64:
+		sa64 := make([]int64, len(text))
+		text_64(text, sa64)
+		return *(*[]int)(unsafe.Pointer(&sa64)), nil
+	default:
+		return nil, ErrUnsupportedIntSize
+	}
+}
+
 // Copyright 2011 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE-go file.
-
-package suffixset
-
-func BuildSuffixArray32(text []byte) []int32 {
-  sa := make([]int32, len(text))
-  text_32(text, sa)
-  return sa
-}
-
-func BuildSuffixArray64(text []byte) []int64 {
-  sa := make([]int64, len(text))
-  text_64(text, sa)
-  return sa
-}
 
 // text_32 returns the suffix array for the input text.
 // It requires that len(text) fit in an int32
@@ -166,7 +179,7 @@ func bucketMax_8_32(text []byte, freq, bucket []int32) {
 // The text indexes of LMS-substring characters are always ≥ 1
 // (the first LMS-substring must be preceded by one or more L-type
 // characters that are not part of any LMS-substring),
-// so using 0 as a “not present” suffix array entry is safe,
+// so using 0 as a "not present" suffix array entry is safe,
 // both in this function and in most later functions
 // (until induceL_8_32 below).
 func placeLMS_8_32(text []byte, sa, freq, bucket []int32) int {
@@ -416,14 +429,14 @@ func induceSubS_8_32(text []byte, sa, freq, bucket []int32) {
 //
 // Second, to avoid text comparison entirely, if an LMS-substring is very short,
 // sa[j/2] records its actual text instead of its length, so that if two such
-// substrings have matching “length,” the text need not be read at all.
-// The definition of “very short” is that the text bytes must pack into a uint32,
+// substrings have matching "length," the text need not be read at all.
+// The definition of "very short" is that the text bytes must pack into a uint32,
 // and the unsigned encoding e must be ≥ len(text), so that it can be
 // distinguished from a valid length.
 func length_8_32(text []byte, sa []int32, numLMS int) {
 	end := 0 // index of current LMS-substring end (0 indicates final LMS-substring)
 
-	// The encoding of N text bytes into a “length” word
+	// The encoding of N text bytes into a "length" word
 	// adds 1 to each byte, packs them into the bottom
 	// N*8 bits of a word, and then bitwise inverts the result.
 	// That is, the text sequence A B C (hex 41 42 43)
@@ -493,7 +506,7 @@ func assignID_8_32(text []byte, sa []int32, numLMS int) int {
 			goto New
 		}
 		if uint32(n) >= uint32(len(text)) {
-			// “Length” is really encoded full text, and they match.
+			// "Length" is really encoded full text, and they match.
 			goto Same
 		}
 		{
@@ -1706,7 +1719,7 @@ func induceSubS_64(text []int64, sa, freq, bucket []int64) {
 func length_8_64(text []byte, sa []int64, numLMS int) {
 	end := 0 // index of current LMS-substring end (0 indicates final LMS-substring)
 
-	// The encoding of N text bytes into a “length” word
+	// The encoding of N text bytes into a "length" word
 	// adds 1 to each byte, packs them into the bottom
 	// N*8 bits of a word, and then bitwise inverts the result.
 	// That is, the text sequence A B C (hex 41 42 43)
@@ -1758,7 +1771,7 @@ func length_8_64(text []byte, sa []int64, numLMS int) {
 func length_32(text []int32, sa []int32, numLMS int) {
 	end := 0 // index of current LMS-substring end (0 indicates final LMS-substring)
 
-	// The encoding of N text int32s into a “length” word
+	// The encoding of N text int32s into a "length" word
 	// adds 1 to each int32, packs them into the bottom
 	// N*8 bits of a word, and then bitwise inverts the result.
 	// That is, the text sequence A B C (hex 41 42 43)
@@ -1804,7 +1817,7 @@ func length_32(text []int32, sa []int32, numLMS int) {
 func length_64(text []int64, sa []int64, numLMS int) {
 	end := 0 // index of current LMS-substring end (0 indicates final LMS-substring)
 
-	// The encoding of N text int64s into a “length” word
+	// The encoding of N text int64s into a "length" word
 	// adds 1 to each int64, packs them into the bottom
 	// N*8 bits of a word, and then bitwise inverts the result.
 	// That is, the text sequence A B C (hex 41 42 43)
@@ -1858,7 +1871,7 @@ func assignID_8_64(text []byte, sa []int64, numLMS int) int {
 			goto New
 		}
 		if uint64(n) >= uint64(len(text)) {
-			// “Length” is really encoded full text, and they match.
+			// "Length" is really encoded full text, and they match.
 			goto Same
 		}
 		{
@@ -1894,7 +1907,7 @@ func assignID_32(text []int32, sa []int32, numLMS int) int {
 			goto New
 		}
 		if uint32(n) >= uint32(len(text)) {
-			// “Length” is really encoded full text, and they match.
+			// "Length" is really encoded full text, and they match.
 			goto Same
 		}
 		{
@@ -1930,7 +1943,7 @@ func assignID_64(text []int64, sa []int64, numLMS int) int {
 			goto New
 		}
 		if uint64(n) >= uint64(len(text)) {
-			// “Length” is really encoded full text, and they match.
+			// "Length" is really encoded full text, and they match.
 			goto Same
 		}
 		{
@@ -2513,4 +2526,3 @@ func induceS_64(text []int64, sa, freq, bucket []int64) {
 		sa[b] = int64(k)
 	}
 }
-
