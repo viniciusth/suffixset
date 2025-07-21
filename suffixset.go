@@ -306,6 +306,12 @@ func recursiveFindKMatches(baseL, l, r, k int, wordIndex, matches, suffixArray, 
 		return matches
 	}
 	matches = append(matches, wordIndex[suffixArray[p]])
+	if len(matches) >= k {
+		return matches
+	}
 	matches = recursiveFindKMatches(baseL, l, p-1, k, wordIndex, matches, suffixArray, prev, rmq)
+	if len(matches) >= k {
+		return matches
+	}
 	return recursiveFindKMatches(baseL, p+1, r, k, wordIndex, matches, suffixArray, prev, rmq)
 }
